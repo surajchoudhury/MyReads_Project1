@@ -27,7 +27,6 @@ const ListBooks = (props) => {
 };
 
 ListBooks.prototype = {
-  listBooks: PropTypes.array.isRequired,
   onSelfChange: PropTypes.func.isRequired,
 };
 

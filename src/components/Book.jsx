@@ -2,7 +2,6 @@ import React from "react";
 
 const Book = (props) => {
   const { book, onShelfChange, searched } = props;
-
   return (
     <div className="book">
       <div className="book-top">
@@ -11,17 +10,21 @@ const Book = (props) => {
           style={{
             width: 128,
             height: 193,
-            backgroundImage: `url("${book.imageLinks.thumbnail}")`,
+            backgroundImage: `url("${
+              book.imageLinks && book.imageLinks.thumbnail
+                ? book.imageLinks.thumbnail
+                : ""
+            }")`,
           }}
         />
         <div className="book-shelf-changer">
           <select
-            defaultValue={book.shelf}
-            onChange={(event) =>
-              onShelfChange(book, event.target.value, searched)
+            defaultValue={book.shelf ? book.shelf : "none"}
+            onChange={({ target: { value } }) =>
+              onShelfChange(book, value, searched)
             }
           >
-            <option value="none" disabled>
+            <option value="disabled" disabled>
               Move to...
             </option>
             <option value="currentlyReading">Currently Reading</option>
@@ -37,4 +40,4 @@ const Book = (props) => {
   );
 };
 
-export default Book;
+export default React.memo(Book);

@@ -2,14 +2,16 @@ import React, { Component, createRef } from "react";
 import Book from "./Book";
 import * as BooksAPI from "../BooksAPI";
 import SearchTerms from "./SearchTerms";
+import terms from "../assets/terms";
 import { Link } from "react-router-dom";
+import { Debounce } from "react-throttle";
 
 class SearchBook extends Component {
   constructor(props) {
     super(props);
     this.state = {
       searchResults: [],
-      error: null,
+      error: false,
       focus: false,
     };
     this.input = createRef();
@@ -20,26 +22,35 @@ class SearchBook extends Component {
   };
 
   onSearch = async ({ target: { value } }) => {
-    if (!this.state.searchResults.length || !this.state.error) {
+    try {
+      // if (!this.state.searchResults.length || !this.state.error) {
       this.handleFocus(true);
-    }
+      // }
 
-    const response =
-      value.trim().length &&
-      BooksAPI.search(value.trim().toLowerCase(), 20).then(
-        (results) => results
-      );
+      const response =
+        value.trim().length &&
+        BooksAPI.search(value.trim().toLowerCase(), 20).then(
+          (results) => results
+        );
+      const data = await response;
+      const searchResults = data.map((book) => {
+        const bookInShelf = this.props.books.find((b) => b.id === book.id);
+        if (bookInShelf) {
+          book.shelf = bookInShelf.shelf;
+        }
+        return book;
+      });
 
-    const searchResults = await response;
-    if (searchResults.error) {
-      this.updateState(searchResults.error, []);
+      if (searchResults.length) {
+        this.updateState(null, searchResults);
+        this.handleFocus(false);
+      } else if (!value.trim().length) {
+        this.updateState(null, []);
+        this.handleFocus(true);
+      }
+    } catch (error) {
+      this.updateState(true, []);
       this.handleFocus(false);
-    } else if (searchResults.length) {
-      this.updateState(null, [...searchResults]);
-      this.handleFocus(false);
-    } else if (!value.trim().length) {
-      this.updateState(null, []);
-      this.handleFocus(true);
     }
   };
 
@@ -48,94 +59,13 @@ class SearchBook extends Component {
   };
 
   clearQuery = () => {
-    this.updateState(null, null);
+    this.updateState(null, []);
     this.input.current.value = "";
   };
 
   render() {
     const { searchResults, error, focus } = this.state;
     const { onShelfChange } = this.props;
-    const terms = [
-      "Android",
-      "Art",
-      "Artificial Intelligence",
-      "Astronomy",
-      "Austen",
-      "Baseball",
-      "Basketball",
-      "Bhagat",
-      "Biography",
-      "Brief",
-      "Business",
-      "Camus",
-      "Cervantes",
-      "Christie",
-      "Classics",
-      "Comics",
-      "Cook",
-      "Cricket",
-      "Cycling",
-      "Desai",
-      "Design",
-      "Development",
-      "Digital Marketing",
-      "Drama",
-      "Drawing",
-      "Dumas",
-      "Education",
-      "Everything",
-      "Fantasy",
-      "Film",
-      "Finance",
-      "First",
-      "Fitness",
-      "Football",
-      "Future",
-      "Games",
-      "Gandhi",
-      "Homer",
-      "Horror",
-      "Hugo",
-      "Ibsen",
-      "Journey",
-      "Kafka",
-      "King",
-      "Lahiri",
-      "Larsson",
-      "Learn",
-      "Literary Fiction",
-      "Make",
-      "Manage",
-      "Marquez",
-      "Money",
-      "Mystery",
-      "Negotiate",
-      "Painting",
-      "Philosophy",
-      "Photography",
-      "Poetry",
-      "Production",
-      "Programming",
-      "React",
-      "Redux",
-      "River",
-      "Robotics",
-      "Rowling",
-      "Satire",
-      "Science Fiction",
-      "Shakespeare",
-      "Singh",
-      "Swimming",
-      "Tale",
-      "Thrun",
-      "Time",
-      "Tolstoy",
-      "Travel",
-      "Ultimate",
-      "Virtual Reality",
-      "Web Development",
-      "iOS",
-    ];
 
     return (
       <div className="search-books">
@@ -144,12 +74,16 @@ class SearchBook extends Component {
             Close
           </Link>
           <div className="search-books-input-wrapper">
-            <input
-              type="text"
-              placeholder="Search by title or author"
-              onKeyUp={this.onSearch}
-              ref={this.input}
-            />
+            <Debounce time="400" handler="onChange">
+              <input
+                type="text"
+                placeholder="Search by title or author"
+                onKeyUp={this.onSearch}
+                ref={this.input}
+                onFocus={() => this.handleFocus(true)}
+              />
+            </Debounce>
+
             {focus && (
               <div
                 style={{
@@ -160,7 +94,7 @@ class SearchBook extends Component {
                 }}
               >
                 {terms.map((term) => (
-                  <SearchTerms term={term} />
+                  <SearchTerms key={term} term={term} />
                 ))}
               </div>
             )}
@@ -187,7 +121,15 @@ class SearchBook extends Component {
                   </li>
                 ))
               : ""}
-            {<p className="error-message">{error && "No Results Found!"}</p>}
+            {
+              <p>
+                {error && (
+                  <span>
+                    No<span className="no_result">Results</span>Found
+                  </span>
+                )}
+              </p>
+            }
           </ol>
         </div>
       </div>
